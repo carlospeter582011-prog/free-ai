@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pollinations Gateway Hub</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background: #0d0e12; color: #e1e1e6; padding: 10px; display: flex; justify-content: center; min-height: 100vh; }
+        
+        .container { width: 100%; max-width: 600px; background: #16171d; padding: 16px; border-radius: 16px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+        
+        /* Top Navigation Header & Account Security Panel */
+        .header { display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid #292a33; padding-bottom: 12px; }
+        .brand { font-size: 20px; font-weight: 800; color: #00df89; text-align: center; }
+        
+        .auth-panel { background: #1f2029; padding: 14px; border-radius: 12px; text-align: center; font-size: 14px; display: flex; flex-direction: column; gap: 8px; align-items: center; justify-content: center; border: 1px solid #2e303d; }
+        .btn-auth { background: #00df89; color: #0d0e12; border: none; padding: 12px 16px; font-weight: bold; border-radius: 8px; cursor: pointer; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; width: 100%; justify-content: center; transition: 0.2s; }
+        .btn-auth:active { transform: scale(0.98); }
+        .btn-logout { background: transparent; border: 1px solid #ea4335; color: #ea4335; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; margin-top: 5px; transition: 0.2s; }
+        .badge { background: #292a33; padding: 2px 8px; border-radius: 12px; font-size: 12px; color: #00df89; font-weight: 600; }
+
+        /* Mobile Tabs Navigation Layer */
+        .tabs { display: flex; background: #1f2029; padding: 4px; border-radius: 10px; gap: 4px; }
+        .tab-btn { flex: 1; background: none; border: none; color: #a8a8b3; padding: 12px 4px; font-size: 14px; font-weight: 600; cursor: pointer; border-radius: 8px; text-align: center; transition: 0.2s; white-space: nowrap; }
+        .tab-btn.active { background: #2e303d; color: #00df89; }
+        
+        .tab-content { display: none; background: #1a1b24; padding: 14px; border-radius: 12px; border: 1px solid #23242e; min-height: 200px; position: relative; }
+        .tab-content.active { display: block; }
+
+        /* Strict User Wall Access State */
+        .locked-overlay { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 30px 10px; gap: 12px; color: #a8a8b3; }
+        .lock-icon { font-size: 36px; margin-bottom: 4px; }
+        .lock-title { color: #ea4335; font-size: 16px; font-weight: bold; }
+
+        /* Standard Internal Components */
+        .tab-internal-content { display: none; }
+
+        label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: #a8a8b3; }
+        input, select, textarea { width: 100%; padding: 12px; background: #1f2029; border: 1px solid #2e303d; border-radius: 8px; color: #fff; font-size: 14px; margin-bottom: 12px; -webkit-appearance: none; }
+        input:focus, select:focus, textarea:focus { border-color: #00df89; outline: none; }
+        
+        .action-btn { background: #00df89; color: #0d0e12; border: none; padding: 14px; font-size: 15px; font-weight: bold; border-radius: 8px; cursor: pointer; width: 100%; transition: 0.2s; }
+        .action-btn:active { transform: scale(0.98); }
+
+        /* Chat Panel UI Box */
+        .chat-box { background: #0d0e12; border: 1px solid #23242e; height: 260px; overflow-y: auto; padding: 12px; border-radius: 8px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+        .msg { max-width: 85%; padding: 10px 12px; border-radius: 10px; font-size: 14px; line-height: 1.4; word-break: break-word; }
+        .msg.user { background: #1f2029; align-self: flex-end; color: #fff; border-bottom-right-radius: 2px; }
+        .msg.ai { background: #0b2e21; align-self: flex-start; color: #e1e1e6; border-left: 3px solid #00df89; border-bottom-left-radius: 2px; }
+
+        /* Output Viewports */
+        .output-area { margin-top: 14px; text-align: center; background: #0d0e12; padding: 12px; border-radius: 8px; min-height: 60px; display: flex; justify-content: center; align-items: center; }
+        img.result-img { max-width: 100%; height: auto; border-radius: 6px; max-height: 300px; object-fit: contain; }
+        audio { width: 100%; margin-top: 4px; }
+        .loading { color: #00df89; font-style: italic; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <div class="brand">Pollinations Hub</div>
+        
+        <div class="auth-panel" id="auth-panel">
+            <span id="auth-status">Checking terminal parameters...</span>
+            <button class="btn-auth" onclick="loginWithPollinations()">🏵️ Connect Pollinations Account</button>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab(this, 'text-tab')">💬 Chat</button>
+        <button class="tab-btn" onclick="switchTab(this, 'image-tab')">🖼️ Image</button>
+        <button class="tab-btn" onclick="switchTab(this, 'audio-tab')">🔊 Audio</button>
+    </div>
+
+    <div id="text-tab" class="tab-content active">
+        <div class="locked-overlay">
+            <div class="lock-icon">🔒</div>
+            <div class="lock-title">Access Restricted</div>
+            <p style="font-size:13px;">Please connect your Pollinations account above to unlock chat options and sync your pollen wallet.</p>
+        </div>
+        
+        <div class="tab-internal-content">
+            <label for="text-model">Select Core LLM Node:</label>
+            <select id="text-model">
+                <option value="openai">GPT-4o-mini (Optimized/Free)</option>
+                <option value="qwen-coder">Qwen 2.5 Coder (Development)</option>
+                <option value="mistral">Mistral Nemo (General Logic)</option>
+            </select>
+            
+            <div class="chat-box" id="chat-box">
+                <div class="msg ai">Connection established. Chat environment is ready and tracked under your secure token header.</div>
+            </div>
+            
+            <div style="display:flex; gap:8px;">
+                <input type="text" id="chat-input" placeholder="Type an AI prompt..." onkeypress="if(event.key === 'Enter') sendChatMessage()">
+                <button onclick="sendChatMessage()" style="background:#00df89; border:none; width:65px; height:46px; border-radius:8px; cursor:pointer; color:#0d0e12; font-weight:bold; font-size:14px;">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="image-tab" class="tab-content">
+        <div class="locked-overlay">
+            <div class="lock-icon">🔒</div>
+            <div class="lock-title">Generation Engine Locked</div>
+            <p style="font-size:13px;">Link your account parameters at the top panel to process image transformations via your user balance.</p>
+        </div>
+
+        <div class="tab-internal-content">
+            <label for="image-model">Select Image Synthesis Weights:</label>
+            <select id="image-model">
+                <option value="flux">Flux (Hyper-Realistic Details)</option>
+                <option value="turbo">Z-Image Turbo (High Speed)</option>
+            </select>
+            <label for="image-prompt">Visual String Target:</label>
+            <textarea id="image-prompt" rows="2" placeholder="Ex: Masterpiece, ultra realistic workspace..."></textarea>
+            <button class="action-btn" onclick="generateImage()">Generate Picture</button>
+            <div class="output-area" id="image-output">Image preview window slot...</div>
+        </div>
+    </div>
+
+    <div id="audio-tab" class="tab-content">
+        <div class="locked-overlay">
+            <div class="lock-icon">🔒</div>
+            <div class="lock-title">Audio Pipeline Locked</div>
+            <p style="font-size:13px;">Connect your open developer token profile at the top to access synthesized Text-to-Speech voices.</p>
+        </div>
+
+        <div class="tab-internal-content">
+            <label for="audio-model">Audio TTS Engine Model:</label>
+            <select id="audio-model">
+                <option value="qwen-tts">Qwen3-TTS Flash (Fast/Free Default)</option>
+            </select>
+            <label for="audio-prompt">Text-to-Speech Source Context:</label>
+            <textarea id="audio-prompt" rows="2" placeholder="Type sentences you want processed into audio waves..."></textarea>
+            <button class="action-btn" onclick="generateAudio()">Convert context to speech</button>
+            <div class="output-area" id="audio-output">Audio rendering wave player container...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // System Tracking Configurations
+    const APP_KEY = "pk_SsIOXdjaysZkXkoi"; 
+    let USER_TOKEN = localStorage.getItem('pollinations_user_token') || "";
+
+    // Parse verification strings inside URL fragment hash on authorization callbacks
+    window.addEventListener('DOMContentLoaded', () => {
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const incomingToken = hashParams.get('api_key');
+        
+        if (incomingToken) {
+            USER_TOKEN = incomingToken;
+            localStorage.setItem('pollinations_user_token', incomingToken);
+            window.history.replaceState(null, null, window.location.pathname);
+        }
+        updateAuthInterface();
+    });
+
+    // Clear parameter filters to support unlimited fallback operations for 0.01 balance handles
+    function loginWithPollinations() {
+        const currentDomain = window.location.origin + window.location.pathname;
+        const authUrl = `https://enter.pollinations.ai/authorize?redirect_uri=${encodeURIComponent(currentDomain)}&client_id=${APP_KEY}`;
+        window.location.href = authUrl;
+    }
+
+    function logout() {
+        USER_TOKEN = "";
+        localStorage.removeItem('pollinations_user_token');
+        updateAuthInterface();
+    }
+
+    // Controls structural execution locks depending on existence of a linked profile token
+    function updateAuthInterface() {
+        const panel = document.getElementById('auth-panel');
+        const overlays = document.querySelectorAll('.locked-overlay');
+        const contents = document.querySelectorAll('.tab-internal-content');
+
+        if (USER_TOKEN) {
+            const displayToken = USER_TOKEN.substring(0, 8) + "...";
+            panel.innerHTML = `
+                <div style="font-size:13px; font-weight:600; margin-bottom:4px;">Connected Node: <span class="badge">${displayToken}</span></div>
+                <button class="btn-logout" onclick="logout()">Disconnect Wallet</button>
+            `;
+            // Unlocked state initialization
+            overlays.forEach(o => o.style.display = 'none');
+            contents.forEach(c => c.style.display = 'block');
+        } else {
+            panel.innerHTML = `
+                <span style="font-size:12px; color:#a8a8b3; margin-bottom:6px; display:block;">⚠️ Linking required. Connect your wallet to clear the tools wall.</span>
+                <button class="btn-auth" onclick="loginWithPollinations()">🏵️ Connect Pollinations Account</button>
+            `;
+            // Locked structural overlay implementation
+            overlays.forEach(o => o.style.display = 'flex');
+            contents.forEach(c => c.style.display = 'none');
+        }
+    }
+
+    function getAuthToken() {
+        return USER_TOKEN;
+    }
+
+    function switchTab(element, tabId) {
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        element.classList.add('active');
+    }
+
+    let conversationHistory = [];
+
+    // --- LLM CHAT CORE ROUTING ---
+    async function sendChatMessage() {
+        const inputField = document.getElementById('chat-input');
+        const userText = inputField.value.trim();
+        if (!userText) return;
+
+        const model = document.getElementById('text-model').value;
+        const chatBox = document.getElementById('chat-box');
+
+        appendMessage(userText, 'user');
+        inputField.value = '';
+        conversationHistory.push({ role: 'user', content: userText });
+
+        const loadingDiv = appendMessage('Processing tokens...', 'ai loading-msg');
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        try {
+            const response = await fetch('https://gen.pollinations.ai/v1/chat/completions', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${getAuthToken()}`
+                },
+                body: JSON.stringify({
+                    messages: conversationHistory,
+                    model: model,
+                    stream: false
+                })
+            });
+
+            const data = await response.json();
+            const aiText = data.choices[0].message.content;
+            
+            loadingDiv.remove();
+            appendMessage(aiText, 'ai');
+            conversationHistory.push({ role: 'assistant', content: aiText });
+            
+        } catch (error) {
+            loadingDiv.innerText = "Error. Free limit exhausted or connection reset.";
+            console.error(error);
+        }
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function appendMessage(text, className) {
+        const chatBox = document.getElementById('chat-box');
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `msg ${className}`;
+        msgDiv.innerText = text;
+        chatBox.appendChild(msgDiv);
+        return msgDiv;
+    }
+
+    // --- TEXT TO IMAGE COMPILATION ---
+    async function generateImage() {
+        const prompt = document.getElementById('image-prompt').value.trim();
+        const model = document.getElementById('image-model').value;
+        const outputDiv = document.getElementById('image-output');
+
+        if (!prompt) return alert('Enter visualization description text!');
+        outputDiv.innerHTML = '<span class="loading">Rendering pixels...</span>';
+
+        try {
+            const response = await fetch('https://gen.pollinations.ai/v1/images/generations', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${getAuthToken()}`
+                },
+                body: JSON.stringify({ prompt: prompt, model: model, width: 512, height: 512 })
+            });
+
+            const data = await response.json();
+            const imageUrl = data.data[0].url;
+
+            const img = new Image();
+            img.src = imageUrl;
+            img.className = 'result-img';
+            img.onload = () => {
+                outputDiv.innerHTML = '';
+                outputDiv.appendChild(img);
+            };
+        } catch (error) {
+            outputDiv.innerHTML = 'Image failed to build. Try changing the text parameters.';
+            console.error(error);
+        }
+    }
+
+    // --- SECURE TEXT-TO-SPEECH (TTS) BLOB PIPELINE ---
+    async function generateAudio() {
+        const prompt = document.getElementById('audio-prompt').value.trim();
+        const model = document.getElementById('audio-model').value;
+        const outputDiv = document.getElementById('audio-output');
+
+        if (!prompt) return alert('Enter context for conversion!');
+        outputDiv.innerHTML = '<span class="loading">Synthesizing wave file...</span>';
+
+        try {
+            // Making a secure, authenticated request to compile vocal audio files
+            const response = await fetch('https://gen.pollinations.ai/v1/audio/speech', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${getAuthToken()}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: model,
+                    input: prompt,
+                    voice: 'alloy' // Standard universal audio profile
+                })
+            });
+
+            if (!response.ok) throw new Error('API voice compilation failed.');
+
+            // Transform raw response stream into binary data asset block
+            const blob = await response.blob();
+            const localAudioUrl = URL.createObjectURL(blob);
+
+            outputDiv.innerHTML = `
+                <div style="width: 100%;">
+                    <audio controls src="${localAudioUrl}" autoplay></audio>
+                </div>
+            `;
+        } catch (error) {
+            outputDiv.innerHTML = '<span style="color:#ea4335;">Audio synthesis error. Try modifying sentences or check server nodes.</span>';
+            console.error(error);
+        }
+    }
+</script>
+</body>
+</html>
